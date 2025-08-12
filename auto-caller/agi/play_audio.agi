@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+import sys
+import os
+
+# AGI skripti - audio faylni o'qish uchun
+def main():
+    # AGI o'zgaruvchilarini o'qish
+    env = {}
+    while True:
+        line = sys.stdin.readline().strip()
+        if line == '':
+            break
+        key, value = line.split(':', 1)
+        env[key] = value.strip()
+    
+    # Audio fayl nomini olish
+    audio_file = env.get('AUDIOFILE', '')
+    
+    if audio_file:
+        # Audio fayl yo'lini aniqlash (project-audio katalogidan izlash)
+        audio_path = f"/var/lib/asterisk/sounds/project-audio/{audio_file}.gsm"
+        
+        # Fayl mavjudligini tekshirish
+        if os.path.exists(audio_path):
+            # Audio faylni o'qish (project-audio katalogidan)
+            print(f"EXEC Playback project-audio/{audio_file}.gsm")
+        else:
+            # Agar project-audio katalogida mavjud bo'lmasa, custom katalogidan izlash
+            audio_path = f"/var/lib/asterisk/sounds/custom/{audio_file}.gsm"
+            if os.path.exists(audio_path):
+                print(f"EXEC Playback custom/{audio_file}.gsm")
+            else:
+                # Fallback - raqamni aytish
+                print(f"EXEC SayDigits {audio_file}")
+    else:
+        # Agar AUDIOFILE yo'q bo'lsa, fallback
+        print("EXEC SayDigits 998914045340")
+    
+    print("HANGUP")
+
+if __name__ == "__main__":
+    main()
