@@ -16,6 +16,10 @@ class Config:
     CALL_DIR = "/var/spool/asterisk/outgoing"
     ASTERISK_SOUNDS_DIR = "/var/lib/asterisk/sounds"
     
+    # Asterisk SIP config snippets directory (must be included from sip.conf)
+    # Example: add this line to /etc/asterisk/sip.conf -> #include sip_autocaller.d/*.conf
+    SIP_AUTOCALLER_DIR = os.getenv("SIP_AUTOCALLER_DIR", "/etc/asterisk/sip_autocaller.d")
+    
     # Audio va temp kataloglar
     AUDIO_DIR = "audio"
     TEMP_CALL_DIR = "temp_calls"
@@ -45,7 +49,7 @@ class Config:
         else:
             return f"mysql+pymysql://{cls.DB_USER}@{cls.DB_HOST}:{cls.DB_PORT}/{cls.DB_NAME}"
     
-    # SIP konfiguratsiya
+    # SIP konfiguratsiya (default trunk values kept for backward compatibility)
     SIP_HOST = "pbx.skyline.uz"
     SIP_USERNAME = "781137767"
     SIP_SECRET = "VUi0vaqS15M8yXkNK"
@@ -53,6 +57,10 @@ class Config:
     
     # Bulk qo'ng'iroqlar chegarasi
     MAX_BULK_CALLS = 100000000
+    
+    # Call time window (Asia/Tashkent)
+    CALL_START = os.getenv("CALL_START", "07:15")  # HH:MM
+    CALL_END = os.getenv("CALL_END", "21:59")      # HH:MM
     
     @classmethod
     def get_static_number(cls) -> str:

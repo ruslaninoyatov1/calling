@@ -145,3 +145,48 @@ def text_to_speech(text: str, audio_filename: str, speaker_id: int = 1) -> bool:
     except Exception as e:
         logger.error(f"TTS processing failed: {e}")
         return False
+
+def import_audio_from_link(link: str, audio_filename: str) -> bool:
+    """Berilgan linkdan audio yuklab olib, kerakli formatlarga o'tkazib Asteriskga joylaydi"""
+    try:
+        local_dir = Config.AUDIO_DIR
+        asterisk_dir = os.path.join(Config.ASTERISK_SOUNDS_DIR, "project-audio")
+        os.makedirs(local_dir, exist_ok=True)
+        os.makedirs(asterisk_dir, exist_ok=True)
+
+        # Fayl yo'llari
+        src_path = os.path.join(local_dir, f"{audio_filename}.src")
+        wav_path = os.path.join(local_dir, f"{audio_filename}.wav")
+        alaw_path = os.path.join(local_dir, f"{audio_filename}.alaw")
+        gsm_path = os.path.join(local_dir, f"{audio_filename}.gsm")
+
+        # Yuklab olish
+        r = requests.get(link, timeout=60, stream=True)
+        r.raise_for_status()
+        with open(src_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
+        # Source formatdan WAV ga o'tkazish
+        if not convert_audio(src_path, wav_path, "pcm_s16le"):
+            return False
+
+        # Qo'shimcha formatlarga konvertatsiya
+        if not convert_audio(wav_path, alaw_path, "pcm_alaw"):
+            logger.warning("ALAW conversion failed")
+        if not convert_audio(wav_path, gsm_path, "gsm"):
+            logger.warning("GSM conversion failed")
+
+        # Asteriskga nusxa
+        for src in (wav_path, alaw_path, gsm_path):
+            if os.path.exists(src):
+                if not _copy_to_asterisk(src, asterisk_dir):
+                    logger.error(f"Failed to copy {src} to Asterisk directory")
+                    return False
+
+        logger.info(f"Successfully imported audio from link for {audio_filename}")
+        return True
+    except Exception as e:
+        logger.error(f"Audio import failed: {e}")
+        return False

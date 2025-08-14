@@ -11,6 +11,7 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 # ===== COMPANIES =====
 
 def create_company(db: Session, company: schemas.CompanyCreate) -> models.Company:
+    # Create company with token
     db_company = models.Company(
         name=company.name,
         link=company.link,
@@ -21,6 +22,19 @@ def create_company(db: Session, company: schemas.CompanyCreate) -> models.Compan
     db.add(db_company)
     db.commit()
     db.refresh(db_company)
+    
+    # Create Asterisk trunk for this company
+    try:
+        from app.asterisk_trunk import ensure_trunk_for_company
+        trunk_name = ensure_trunk_for_company(db_company)
+        if trunk_name:
+            db_company.trunk_name = trunk_name
+            db.commit()
+            db.refresh(db_company)
+    except Exception:
+        # Non-fatal; proceed even if trunk ensure fails
+        pass
+    
     return db_company
 
 def get_companies(db: Session) -> List[models.Company]:
@@ -49,29 +63,34 @@ def get_user_by_login(db: Session, login: str) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.login == login).first()
 
 # ===== TEXTS =====
+
 def create_text(db: Session, text: schemas.TextCreate) -> models.Text:
     db_text = models.Text(
         company_id=text.company_id,
-        text=text.text,
+        text=text.text or "",
+        link=text.link,
     )
     db.add(db_text)
     db.commit()
     db.refresh(db_text)
-
-    if text.text:
-        try:
-            from app import tts
-            filename_prefix = f"audio-{db_text.id}"
-            success = tts.text_to_speech(text.text, filename_prefix)
-            
-            if success:
-                db_text.audio_filename = filename_prefix
-                db.commit()
-                db.refresh(db_text)
-            else:
-                raise ValueError("Audio generation failed")
-        except Exception as e:
-            raise ValueError(f"TTS generation failed: {e}")
+    
+    # Generate or import audio
+    from app import tts
+    filename_prefix = f"audio-{db_text.id}"
+    try:
+        if text.link:
+            success = tts.import_audio_from_link(text.link, filename_prefix)
+        else:
+            success = tts.text_to_speech(text.text or "", filename_prefix)
+        
+        if success:
+            db_text.audio_filename = filename_prefix
+            db.commit()
+            db.refresh(db_text)
+        else:
+            raise ValueError("Audio generation/import failed")
+    except Exception as e:
+        raise ValueError(f"Audio processing failed: {e}")
 
     return db_text
 

@@ -29,6 +29,8 @@ class Company(Base):
     token = Column(String(255), nullable=False)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+    # Optional stored trunk name (acc_{id}) for reference
+    trunk_name = Column(String(255), nullable=True)
     texts = relationship("Text", back_populates="company", cascade="all, delete-orphan")
     phone_calls = relationship("PhoneCall", back_populates="company", cascade="all, delete-orphan")
 

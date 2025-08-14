@@ -18,7 +18,7 @@ logger.addHandler(handler)
 def check_and_make_calls():
     """
     Ma'lumotlar bazasini tekshirib, kerakli qo'ng'iroqlarni amalga oshiradi.
-    Faqat ertalab 7:00 dan 14:00 gacha bo'lgan vaqtda ishlaydi.
+    Vaqt oynasi Config orqali cheklanadi.
     """
     # Vaqtni tekshirish
     is_within_time, current_time_str = time_checker.is_within_call_time()
@@ -56,8 +56,11 @@ def check_and_make_calls():
                         logger.error(f"Audio fayl nomi mavjud emas: {phone_call.phone}")
                         continue
                     
+                    # Per-company trunk name
+                    trunk_name = getattr(phone_call.company, 'trunk_name', None) or None
+                    
                     # Qo'ng'iroqni amalga oshirish
-                    call.place_call(phone_call.phone, audio_filename)
+                    call.place_call(phone_call.phone, audio_filename, trunk_name=trunk_name)
                     
                     # Qo'ng'iroq holatini yangilash
                     phone_call.status = 1  # Completed

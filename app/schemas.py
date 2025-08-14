@@ -32,6 +32,7 @@ class CompanyCreate(CompanyBase):
 class CompanyResponse(CompanyBase):
     id: int
     token: str
+    trunk_name: Optional[str] = None
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -40,7 +41,7 @@ class CompanyResponse(CompanyBase):
 
 # ===== TEXTS =====
 class TextBase(BaseModel):
-    text: str
+    text: Optional[str] = None
     link: Optional[str] = None
 
 class TextCreate(TextBase):
