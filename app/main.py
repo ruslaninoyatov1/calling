@@ -27,22 +27,10 @@ def get_db():
 @app.post("/companies/", response_model=schemas.CompanyResponse)
 def create_company(data: schemas.CompanyCreate, db: Session = Depends(get_db)):
     try:
-        token = str(uuid.uuid4())
-        company = models.Company(
-            name=data.name,
-            link=data.link,
-            login=data.login,
-            password=data.password,
-            token=token,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        db.add(company)
-        db.commit()
-        db.refresh(company)
+        from app import crud
+        company = crud.create_company(db, data)
         return company
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=500, detail=f"Company creation failed: {str(e)}")
 
 @app.get("/companies/", response_model=list[schemas.CompanyResponse])
@@ -57,39 +45,12 @@ def create_text(data: schemas.TextCreate, db: Session = Depends(get_db)):
         if not company:
             raise HTTPException(status_code=404, detail="Company not found")
 
-        # Text yaratish
-        text = models.Text(
-            company_id=data.company_id,
-            text=data.text,
-            link=data.link,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        db.add(text)
-        db.commit()
-        db.refresh(text)
-        
-        # Audio faylni yaratish
-        audio_filename = f"audio-{text.id}"
-        if not tts.text_to_speech(data.text, audio_filename):
-            db.delete(text)
-            db.commit()
-            raise HTTPException(
-                status_code=500,
-                detail="Audio file creation failed"
-            )
-
-        # Audio fayl nomini yangilash
-        text.audio_filename = audio_filename
-        db.commit()
-        db.refresh(text)
-
-        return text
+        from app import crud
+        return crud.create_text(db, data)
         
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Text creation failed: {str(e)}"
@@ -114,7 +75,9 @@ def create_phone_call(data: schemas.PhoneCallCreate, db: Session = Depends(get_d
         if not os.path.isfile(audio_path):
             raise HTTPException(status_code=400, detail="Audio fayl topilmadi")
 
-        call.place_call(data.phone, audio_filename)
+        company = text_obj.company
+        trunk_name = getattr(company, "trunk_name", None) or None
+        call.place_call(data.phone, audio_filename, trunk_name=trunk_name)
 
         phone_call_instance = models.PhoneCall(
             company_id=text_obj.company_id,

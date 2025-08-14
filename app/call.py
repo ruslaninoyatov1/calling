@@ -2,7 +2,7 @@ import os
 import shutil
 import uuid
 import logging
-from typing import List
+from typing import List, Optional
 from app.config import Config
 
 logger = logging.getLogger(__name__)
@@ -34,13 +34,14 @@ def verify_audio_file(audio_filename: str) -> bool:
     logger.error(f"No audio file found for {audio_filename} in {sounds_dir}")
     return False
 
-def generate_call_content(phone_number: str, audio_filename: str) -> str:
+def generate_call_content(phone_number: str, audio_filename: str, trunk_name: Optional[str] = None) -> str:
     """Call fayli uchun kontent yaratish"""
     context = Config.get_call_context(phone_number)
     extension = Config.get_call_extension(phone_number)
+    channel_trunk = trunk_name or "skyline"
     
     return (
-        f"Channel: SIP/skyline/{phone_number}\n"
+        f"Channel: SIP/{channel_trunk}/{phone_number}\n"
         f"CallerID: \"AutoCaller\" <{phone_number}>\n"
         f"MaxRetries: 0\n"
         f"RetryTime: 60\n"
@@ -51,7 +52,7 @@ def generate_call_content(phone_number: str, audio_filename: str) -> str:
         f"Set: AUDIOFILE={audio_filename}\n"
     )
 
-def place_call(phone_number: str, audio_filename: str) -> str:
+def place_call(phone_number: str, audio_filename: str, trunk_name: Optional[str] = None) -> str:
     """Bitta raqamga qo'ng'iroq qilish"""
     try:
         # Audio faylni tekshirish
@@ -69,7 +70,7 @@ def place_call(phone_number: str, audio_filename: str) -> str:
         os.makedirs(Config.CALL_DIR, exist_ok=True)
 
         # Fayl kontentini yozish
-        content = generate_call_content(phone_number, audio_filename)
+        content = generate_call_content(phone_number, audio_filename, trunk_name)
         with open(temp_call_path, "w") as f:
             f.write(content)
 
